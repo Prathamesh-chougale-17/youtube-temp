@@ -34,6 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import MyCard from "./card";
+import { BackgroundGradientDemo } from "./bdcard";
 
 export function Dashboard() {
   return (
@@ -236,7 +237,7 @@ export function Dashboard() {
                 You can start selling as soon as you add a product.
               </p>
               <Button className="mt-4">Add Product</Button> */}
-              <MyCard />
+              <BackgroundGradientDemo />
             </div>
           </div>
         </main>
