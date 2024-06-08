@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { BackgroundGradient } from "./ui/background-gradient";
-import jorden from "@/public/jorden.jpeg"
+import jorden from "@/public/jorden.jpeg";
 import Image from "next/image";
 
 export function BackgroundGradientDemo() {
