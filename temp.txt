@@ -1,0 +1,128 @@
+import React, { useState } from "react";
+
+const DynamicForm = () => {
+  // State for form data
+  const [formData, setFormData] = useState({
+    contentTypeId: "",
+    content: [],
+  });
+
+  // Function to update content fields
+  const updateContent = (index, key, value) => {
+    const updatedContent = [...formData.content];
+    updatedContent[index] = { ...updatedContent[index], [key]: value };
+    setFormData({ ...formData, content: updatedContent });
+  };
+
+  // Function to add new content section
+  const addContent = () => {
+    setFormData({
+      ...formData,
+      content: [
+        ...formData.content,
+        {
+          id: Date.now().toString(),
+          title: "",
+          shortDesc: "",
+          description: "",
+          images: [],
+          createdDateTime: new Date().toISOString(),
+          updateDateTime: new Date().toISOString(),
+          author: "",
+        },
+      ],
+    });
+  };
+
+  // Function to remove a content section
+  const removeContent = (index) => {
+    const updatedContent = formData.content.filter((_, i) => i !== index);
+    setFormData({ ...formData, content: updatedContent });
+  };
+
+  // Function to handle image upload
+  const handleImageUpload = (e, index) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateContent(index, "images", [reader.result]); // Store Base64
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Function to remove uploaded image
+  const removeImage = (index) => {
+    updateContent(index, "images", []);
+  };
+
+  // Function to handle form submission
+  const handleSubmit = () => {
+    console.log("Form Data:", formData);
+  };
+
+  return (
+    <div>
+      {/* Input for contentTypeId */}
+      <label>Content Type ID:</label>
+      <input
+        type="text"
+        value={formData.contentTypeId}
+        onChange={(e) => setFormData({ ...formData, contentTypeId: e.target.value })}
+      />
+
+      {/* Button to add new content block */}
+      <button onClick={addContent}>Add Content</button>
+
+      {/* Dynamic Content Fields */}
+      {formData.content.map((content, index) => (
+        <div key={content.id}>
+          <input
+            type="text"
+            placeholder="Title"
+            value={content.title}
+            onChange={(e) => updateContent(index, "title", e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Short Description"
+            value={content.shortDesc}
+            onChange={(e) => updateContent(index, "shortDesc", e.target.value)}
+          />
+          <textarea
+            placeholder="Description"
+            value={content.description}
+            onChange={(e) => updateContent(index, "description", e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Author"
+            value={content.author}
+            onChange={(e) => updateContent(index, "author", e.target.value)}
+          />
+
+          {/* Image Upload */}
+          <label>Upload Image:</label>
+          <input type="file" onChange={(e) => handleImageUpload(e, index)} />
+
+          {/* Image Preview with Remove Button */}
+          {content.images.length > 0 && (
+            <div>
+              <img src={content.images[0]} alt="Preview" width="100" />
+              <button onClick={() => removeImage(index)}>Remove Image</button>
+            </div>
+          )}
+
+          {/* Remove Content Section */}
+          <button onClick={() => removeContent(index)}>Remove Content</button>
+        </div>
+      ))}
+
+      {/* Submit Button */}
+      <button onClick={handleSubmit}>Submit</button>
+    </div>
+  );
+};
+
+export default DynamicForm;
