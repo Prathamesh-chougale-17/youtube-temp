@@ -1,20 +1,39 @@
 import React, { useState } from "react";
 
-const DynamicForm = () => {
+// Define types for form structure
+interface ContentType {
+  id: string;
+  title: string;
+  link?: string;
+  subtitle?: string;
+  shortDesc: string;
+  description: string;
+  images: string[];
+  createdDateTime: string;
+  updateDateTime: string;
+  author: string;
+}
+
+interface FormData {
+  contentTypeId: string;
+  content: ContentType[];
+}
+
+const DynamicForm: React.FC = () => {
   // State for form data
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     contentTypeId: "",
     content: [],
   });
 
   // Function to update content fields
-  const updateContent = (index, key, value) => {
+  const updateContent = (index: number, key: keyof ContentType, value: any) => {
     const updatedContent = [...formData.content];
     updatedContent[index] = { ...updatedContent[index], [key]: value };
     setFormData({ ...formData, content: updatedContent });
   };
 
-  // Function to add new content section
+  // Function to add a new content section
   const addContent = () => {
     setFormData({
       ...formData,
@@ -35,26 +54,33 @@ const DynamicForm = () => {
   };
 
   // Function to remove a content section
-  const removeContent = (index) => {
+  const removeContent = (index: number) => {
     const updatedContent = formData.content.filter((_, i) => i !== index);
     setFormData({ ...formData, content: updatedContent });
   };
 
-  // Function to handle image upload
-  const handleImageUpload = (e, index) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateContent(index, "images", [reader.result]); // Store Base64
-      };
-      reader.readAsDataURL(file);
-    }
+  // Function to handle multiple image uploads
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    const readerPromises = files.map((file) => {
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(readerPromises).then((base64Images) => {
+      const updatedImages = [...formData.content[index].images, ...base64Images];
+      updateContent(index, "images", updatedImages);
+    });
   };
 
-  // Function to remove uploaded image
-  const removeImage = (index) => {
-    updateContent(index, "images", []);
+  // Function to remove a specific image
+  const removeImage = (contentIndex: number, imageIndex: number) => {
+    const updatedImages = [...formData.content[contentIndex].images];
+    updatedImages.splice(imageIndex, 1);
+    updateContent(contentIndex, "images", updatedImages);
   };
 
   // Function to handle form submission
@@ -102,15 +128,19 @@ const DynamicForm = () => {
             onChange={(e) => updateContent(index, "author", e.target.value)}
           />
 
-          {/* Image Upload */}
-          <label>Upload Image:</label>
-          <input type="file" onChange={(e) => handleImageUpload(e, index)} />
+          {/* Multiple Image Upload */}
+          <label>Upload Images:</label>
+          <input type="file" multiple onChange={(e) => handleImageUpload(e, index)} />
 
           {/* Image Preview with Remove Button */}
           {content.images.length > 0 && (
             <div>
-              <img src={content.images[0]} alt="Preview" width="100" />
-              <button onClick={() => removeImage(index)}>Remove Image</button>
+              {content.images.map((img, imgIndex) => (
+                <div key={imgIndex}>
+                  <img src={img} alt="Preview" width="100" />
+                  <button onClick={() => removeImage(index, imgIndex)}>Remove Image</button>
+                </div>
+              ))}
             </div>
           )}
 
