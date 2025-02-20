@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 
-// Define types for form structure
+// Define types for the form structure
 interface ContentType {
   id: string;
   title: string;
@@ -19,21 +19,110 @@ interface FormData {
   content: ContentType[];
 }
 
+interface ContentBlockProps {
+  content: ContentType;
+  index: number;
+  updateContent: (index: number, key: keyof ContentType, value: any) => void;
+  removeContent: (index: number) => void;
+  removeImage: (contentIndex: number, imageIndex: number) => void;
+  handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>, index: number) => void;
+}
+
+const ContentBlock: React.FC<ContentBlockProps> = ({
+  content,
+  index,
+  updateContent,
+  removeContent,
+  removeImage,
+  handleImageUpload,
+}) => {
+  // Create a ref for the hidden file input for this content block
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Trigger the hidden file input when the button is clicked
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  return (
+    <div style={{ border: "1px solid #ccc", padding: "10px", margin: "10px 0" }}>
+      <input
+        type="text"
+        placeholder="Title"
+        value={content.title}
+        onChange={(e) => updateContent(index, "title", e.target.value)}
+      />
+      <br />
+      <input
+        type="text"
+        placeholder="Short Description"
+        value={content.shortDesc}
+        onChange={(e) => updateContent(index, "shortDesc", e.target.value)}
+      />
+      <br />
+      <textarea
+        placeholder="Description"
+        value={content.description}
+        onChange={(e) => updateContent(index, "description", e.target.value)}
+      />
+      <br />
+      <input
+        type="text"
+        placeholder="Author"
+        value={content.author}
+        onChange={(e) => updateContent(index, "author", e.target.value)}
+      />
+      <br />
+      {/* Hidden file input */}
+      <input
+        type="file"
+        multiple
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={(e) => handleImageUpload(e, index)}
+      />
+      {/* Button to trigger file input */}
+      <button type="button" onClick={triggerFileInput}>
+        Upload Images for Content {index + 1}
+      </button>
+      <br />
+      {/* Display image previews with a remove button */}
+      {content.images.length > 0 && (
+        <div>
+          {content.images.map((img, imgIndex) => (
+            <div key={imgIndex} style={{ display: "inline-block", margin: "5px" }}>
+              <img src={img} alt="Preview" width="100" />
+              <br />
+              <button type="button" onClick={() => removeImage(index, imgIndex)}>
+                Remove Image
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <br />
+      <button type="button" onClick={() => removeContent(index)}>
+        Remove Content
+      </button>
+    </div>
+  );
+};
+
 const DynamicForm: React.FC = () => {
-  // State for form data
+  // State for the form data
   const [formData, setFormData] = useState<FormData>({
     contentTypeId: "",
     content: [],
   });
 
-  // Function to update content fields
+  // Update a field in a specific content block
   const updateContent = (index: number, key: keyof ContentType, value: any) => {
     const updatedContent = [...formData.content];
     updatedContent[index] = { ...updatedContent[index], [key]: value };
     setFormData({ ...formData, content: updatedContent });
   };
 
-  // Function to add a new content section
+  // Add a new content block
   const addContent = () => {
     setFormData({
       ...formData,
@@ -53,22 +142,23 @@ const DynamicForm: React.FC = () => {
     });
   };
 
-  // Function to remove a content section
+  // Remove a content block by index
   const removeContent = (index: number) => {
     const updatedContent = formData.content.filter((_, i) => i !== index);
     setFormData({ ...formData, content: updatedContent });
   };
 
-  // Function to handle multiple image uploads
+  // Handle image uploads (convert to Base64)
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
-    const readerPromises = files.map((file) => {
-      return new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-    });
+    const readerPromises = files.map(
+      (file) =>
+        new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        })
+    );
 
     Promise.all(readerPromises).then((base64Images) => {
       const updatedImages = [...formData.content[index].images, ...base64Images];
@@ -76,82 +166,62 @@ const DynamicForm: React.FC = () => {
     });
   };
 
-  // Function to remove a specific image
+  // Remove a specific image from a content block
   const removeImage = (contentIndex: number, imageIndex: number) => {
     const updatedImages = [...formData.content[contentIndex].images];
     updatedImages.splice(imageIndex, 1);
     updateContent(contentIndex, "images", updatedImages);
   };
 
-  // Function to handle form submission
-  const handleSubmit = () => {
-    console.log("Form Data:", formData);
+  // Handle form submission via POST request
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const response = await fetch("http://localhost:3400/your-endpoint", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log("Success:", data);
+    } catch (error) {
+      console.error("Error:", error);
+    }
   };
 
   return (
-    <div>
-      {/* Input for contentTypeId */}
+    <form onSubmit={handleSubmit}>
       <label>Content Type ID:</label>
       <input
         type="text"
         value={formData.contentTypeId}
         onChange={(e) => setFormData({ ...formData, contentTypeId: e.target.value })}
       />
-
-      {/* Button to add new content block */}
-      <button onClick={addContent}>Add Content</button>
-
-      {/* Dynamic Content Fields */}
+      <br />
+      <button type="button" onClick={addContent}>
+        Add Content
+      </button>
+      <br />
       {formData.content.map((content, index) => (
-        <div key={content.id}>
-          <input
-            type="text"
-            placeholder="Title"
-            value={content.title}
-            onChange={(e) => updateContent(index, "title", e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Short Description"
-            value={content.shortDesc}
-            onChange={(e) => updateContent(index, "shortDesc", e.target.value)}
-          />
-          <textarea
-            placeholder="Description"
-            value={content.description}
-            onChange={(e) => updateContent(index, "description", e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Author"
-            value={content.author}
-            onChange={(e) => updateContent(index, "author", e.target.value)}
-          />
-
-          {/* Multiple Image Upload */}
-          <label>Upload Images:</label>
-          <input type="file" multiple onChange={(e) => handleImageUpload(e, index)} />
-
-          {/* Image Preview with Remove Button */}
-          {content.images.length > 0 && (
-            <div>
-              {content.images.map((img, imgIndex) => (
-                <div key={imgIndex}>
-                  <img src={img} alt="Preview" width="100" />
-                  <button onClick={() => removeImage(index, imgIndex)}>Remove Image</button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Remove Content Section */}
-          <button onClick={() => removeContent(index)}>Remove Content</button>
-        </div>
+        <ContentBlock
+          key={content.id}
+          index={index}
+          content={content}
+          updateContent={updateContent}
+          removeContent={removeContent}
+          removeImage={removeImage}
+          handleImageUpload={handleImageUpload}
+        />
       ))}
-
-      {/* Submit Button */}
-      <button onClick={handleSubmit}>Submit</button>
-    </div>
+      <button type="submit">Submit Form</button>
+    </form>
   );
 };
 
